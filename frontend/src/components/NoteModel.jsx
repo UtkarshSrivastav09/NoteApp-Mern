@@ -33,7 +33,7 @@ const NoteModel = ({ isOpen, onClose, note, onSave }) => {
         );
         onSave(data);
       } else {
-        const { data } = await axios.post("/api/notes", payload, config);
+        const { data } = await axios.post("https://note-app-mern-y9bi.onrender.com/api/notes", payload, config);
         onSave(data);
       }
 

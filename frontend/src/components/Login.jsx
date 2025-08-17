@@ -11,7 +11,7 @@ const Login = ({setUser}) => {
     const handleSubmit = async (e) =>{
         e.preventDefault();
         try{
-            const {data} = await axios.post('/api/users/login',{
+            const {data} = await axios.post('https://note-app-mern-y9bi.onrender.com/api/users/login',{
                 email, password
             })
             localStorage.setItem("token", data.token)

@@ -20,7 +20,7 @@ const Home = () => {
       const searchParams = new URLSearchParams(location.search);
       const search = searchParams.get("search") || "";
 
-      const { data } = await axios.get("/api/notes", {
+      const { data } = await axios.get("https://note-app-mern-y9bi.onrender.com/api/notes", {
         headers: { Authorization: `Bearer ${token}` }
       });
 
