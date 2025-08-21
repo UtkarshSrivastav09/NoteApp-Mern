@@ -39,7 +39,7 @@ function App() {
     );
   }
   return (
-    <div className="min-h-screen bg-blue-500">
+    <div className="min-h-screen bg-[url('https://img.freepik.com/free-vector/abstract-blue-light-pipe-speed-zoom-black-background-technology_1142-9980.jpg')] bg-cover bg-center text-gray-100">
       <Navbar user={user} setUser={setUser} />
 
       <Routes>

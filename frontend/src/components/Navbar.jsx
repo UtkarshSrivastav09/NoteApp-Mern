@@ -25,9 +25,9 @@ const Navbar = ({ user, setUser }) => {
   };
 
   return (
-    <nav className="bg-gray-900 p-4 text-white shadow-lg">
+    <nav className="bg-violet-500 p-4 text-white shadow-lg">
       <div className="container mx-auto flex items-center justify-between">
-        <Link to="/" className="text-xl font-semibold">
+        <Link to="/" className="text-4xl md:text-2xl font-sans font-bold tracking-tight ">
           Notes App
         </Link>
 
