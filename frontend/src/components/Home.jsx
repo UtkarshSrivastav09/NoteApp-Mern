@@ -1,76 +1,77 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import NoteModel from "./NoteModel";
+import NoteCard from "./NoteCard";
+import SkeletonCard from "./SkeletonCard";
 import { useLocation, useNavigate } from "react-router-dom";
-import Alert from "./Alert";
 
+const API_URL = import.meta.env.VITE_API_URL;
 
 const Home = () => {
   const [notes, setNotes] = useState([]);
   const [isModelOpen, setIsModelOpen] = useState(false);
   const [editNote, setEditNote] = useState(null);
-  const [alert, setAlert] = useState(null); // {message, type}
+  const [alert, setAlert] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const search = queryParams.get("search") || "";
   const tagFilter = queryParams.get("tag") || "";
 
-  const showAlert = (message, type = "success") => {
-    setAlert({ message, type });
-  };
+  const showAlert = (message, type = "success") => setAlert({ message, type });
 
   const fetchNotes = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
       if (!token) {
         showAlert("You are not logged in", "error");
+        setTimeout(() => navigate("/login", { replace: true }), 1000);
         return;
       }
 
-      const response = await axios.get("/api/notes", {
+      const { data } = await axios.get(`${API_URL}/api/notes`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      let data = response.data;
-
-      if (search) {
-        data = data.filter((note) =>
+      let filteredData = data;
+      if (search)
+        filteredData = filteredData.filter((note) =>
           note.title.toLowerCase().includes(search.toLowerCase())
         );
-      }
+      if (tagFilter)
+        filteredData = filteredData.filter((note) =>
+          note.tags?.includes(tagFilter)
+        );
 
-      if (tagFilter) {
-        data = data.filter((note) => note.tags?.includes(tagFilter));
-      }
-
-      setNotes(data);
+      setNotes(filteredData);
     } catch (err) {
       console.error(err);
       showAlert(err.response?.data?.message || "Failed to fetch notes", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchNotes();
+    // eslint-disable-next-line
   }, [search, tagFilter]);
 
   const handleSave = async (note) => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        showAlert("You are not logged in", "error");
-        return;
-      }
+      if (!token) return showAlert("You are not logged in", "error");
 
       if (note._id) {
-        await axios.put(`/api/notes/${note._id}`, note, {
+        await axios.put(`${API_URL}/api/notes/${note._id}`, note, {
           headers: { Authorization: `Bearer ${token}` },
         });
         showAlert("Note updated successfully", "success");
       } else {
-        await axios.post("/api/notes", note, {
+        await axios.post(`${API_URL}/api/notes`, note, {
           headers: { Authorization: `Bearer ${token}` },
         });
         showAlert("Note created successfully", "success");
@@ -88,15 +89,12 @@ const Home = () => {
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        showAlert("You are not logged in", "error");
-        return;
-      }
+      if (!token) return showAlert("You are not logged in", "error");
 
-      await axios.delete(`/api/notes/${id}`, {
+      await axios.delete(`${API_URL}/api/notes/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      showAlert("Note deleted successfully", "error");
+      showAlert("Note deleted successfully", "success");
       fetchNotes();
     } catch (err) {
       console.error(err);
@@ -110,65 +108,56 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-300 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-300 p-4 sm:p-8 flex flex-col items-center">
       {/* Floating Add Note Button */}
       <button
         onClick={() => {
           setEditNote(null);
           setIsModelOpen(true);
         }}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-green-500 text-white text-4xl font-bold rounded-full shadow-xl hover:bg-green-600 flex items-center justify-center select-none leading-none transition-transform transform hover:scale-110"
+        className="fixed bottom-6 right-6 w-16 h-16 bg-green-500 text-white text-4xl font-bold rounded-full shadow-xl hover:bg-green-600 flex justify-center items-center select-none leading-none transition-transform transform hover:scale-110 z-50"
       >
         +
       </button>
 
       {/* Notes Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {notes.map((note) => (
-          <div
-            key={note._id}
-            className="bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full max-w-7xl mt-6">
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <SkeletonCard key={idx} />
+          ))}
+        </div>
+      ) : notes.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full max-w-7xl mt-6">
+          {notes.map((note) => (
+            <NoteCard
+              key={note._id}
+              note={note}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center mt-20 space-y-6">
+          <svg
+            className="w-40 h-40 text-green-400 animate-bounce"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 64 64"
+            stroke="currentColor"
+            strokeWidth="2"
           >
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              {note.title}
-            </h3>
-            <p className="text-gray-600 mb-3">{note.description}</p>
-
-            {note.tags?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {note.tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    onClick={() => navigate(`/?tag=${tag}`)}
-                    className="cursor-pointer bg-gray-100 text-gray-700 text-sm px-2 py-1 rounded-full hover:bg-gray-200"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <p className="text-sm text-gray-400 mb-4">
-              {new Date(note.updatedAt).toLocaleString()}
-            </p>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => handleEdit(note)}
-                className="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-400"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(note._id)}
-                className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-400"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M32 4v56M4 32h56" />
+          </svg>
+          <h2 className="text-3xl font-semibold text-gray-700 text-center">
+            No notes yet!
+          </h2>
+          <p className="text-gray-500 text-center max-w-sm">
+            Click the <span className="font-bold text-green-500">+</span> button to add your first note.
+          </p>
+        </div>
+      )}
 
       {/* Modal */}
       <NoteModel
@@ -181,13 +170,15 @@ const Home = () => {
         note={editNote}
       />
 
-      {/* Custom Alert */}
+      {/* Alert */}
       {alert && (
-        <Alert
-          message={alert.message}
-          type={alert.type}
-          onClose={() => setAlert(null)}
-        />
+        <div
+          className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg text-white ${
+            alert.type === "success" ? "bg-green-500" : "bg-red-500"
+          }`}
+        >
+          {alert.message}
+        </div>
       )}
     </div>
   );

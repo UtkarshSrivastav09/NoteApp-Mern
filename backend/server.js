@@ -1,40 +1,56 @@
-import express from 'express';
-import dotenv from 'dotenv';
+import express from "express";
+import dotenv from "dotenv";
+import path from "path";
+import cors from "cors";
+import fs from "fs";
+
 import { connectDB } from "./config/db.js";
-import routes from './routes/auth.js';
-import router from "./routes/note.js"
-dotenv.config({ path: './backend/.env' });
-import path from 'path';
+import authRoutes from "./routes/auth.js";
+import noteRoutes from "./routes/note.js";
 
 dotenv.config();
 
-
-
-
+const app = express();
 const PORT = process.env.PORT || 5000;
 
-const app = express();
+// Middleware
+app.use(express.json());
+app.use(cors());
 
-app.use(express.json())
+// API routes
+app.use("/api/users", authRoutes);
+app.use("/api/notes", noteRoutes);
 
-app.use("/api/users", routes);
-app.use("/api/notes", router);
+// Localhost check
+app.get("/", (req, res) => {
+  res.send("🚀 Backend API is running");
+});
+
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ message: "✅ Local API is running successfully" });
+});
 
 const __dirname = path.resolve();
+const frontendDistPath = path.join(__dirname, "frontend", "dist");
+const indexFile = path.join(frontendDistPath, "index.html");
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "/frontend/dist")));
+// ✅ Serve frontend ONLY if build actually exists
+if (process.env.NODE_ENV === "production" && fs.existsSync(indexFile)) {
+  app.use(express.static(frontendDistPath));
 
   app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+    res.sendFile(indexFile);
   });
 }
 
-
-
+// Connect DB
 connectDB();
 
-
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running at port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🟢 API Health Check → http://localhost:${PORT}/api/health`);
+  console.log(`🧠 NODE_ENV = ${process.env.NODE_ENV || "not set"}`);
 });
